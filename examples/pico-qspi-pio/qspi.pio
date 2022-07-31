@@ -1,0 +1,37 @@
+/* basic SPI interface */
+.program spi
+.side_set 1
+.wrap_target
+    out pins, 1 side 0 [1]
+    in pins, 1  side 1 [1]
+.wrap
+
+% c-sdk {
+#include "hardware/gpio.h"
+static inline void spi_program_init(PIO pio, uint sm, uint offset, uint bits, float clkdiv, uint pin_sck,
+        uint pin_mosi, uint pin_miso)
+{
+    pio_sm_config c = spi_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, pin_mosi, 1);
+    sm_config_set_in_pins(&c, pin_miso);
+    sm_config_set_sideset_pins(&c, pin_sck);
+    sm_config_set_out_shift(&c, false, true, bits);
+    sm_config_set_in_shift(&c, false, true, bits);
+    sm_config_set_clkdiv(&c, clkdiv);
+
+    // setup directions
+    pio_sm_set_pins_with_mask(pio, sm, 0, (1u << pin_sck) | (1u << pin_mosi));
+    pio_sm_set_pindirs_with_mask(pio, sm, (1u << pin_sck) | (1u << pin_mosi),
+            (1u << pin_sck) | (1u << pin_mosi) | (1u << pin_miso));
+    pio_gpio_init(pio, pin_mosi);
+    pio_gpio_init(pio, pin_miso);
+    pio_gpio_init(pio, pin_sck);
+
+    // bypass synchronizer to reduce delay
+    hw_set_bits(&pio->input_sync_bypass, 1u << pin_miso);
+    
+    // enable PIO block
+    pio_sm_init(pio, sm, offset, &c);
+    //pio_sm_set_enabled(pio, sm, true);
+}
+%}
