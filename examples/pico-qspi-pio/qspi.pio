@@ -6,6 +6,14 @@
     in pins, 1  side 1 [1]
 .wrap
 
+/* QSPI write interface */
+.program qspi_write
+.side_set 1
+.wrap_target
+    out pins, 4 side 0 [1]
+    nop         side 1 [1]
+.wrap
+
 % c-sdk {
 #include "hardware/gpio.h"
 static inline void spi_program_init(PIO pio, uint sm, uint offset, uint bits, float clkdiv, uint pin_sck,
@@ -29,6 +37,32 @@ static inline void spi_program_init(PIO pio, uint sm, uint offset, uint bits, fl
 
     // bypass synchronizer to reduce delay
     hw_set_bits(&pio->input_sync_bypass, 1u << pin_miso);
+    
+    // enable PIO block
+    pio_sm_init(pio, sm, offset, &c);
+    //pio_sm_set_enabled(pio, sm, true);
+}
+%}
+
+% c-sdk {
+#include "hardware/gpio.h"
+static inline void qspi_write_program_init(PIO pio, uint sm, uint offset, uint bits, float clkdiv, uint pin_sck,
+        uint pin_base)
+{
+    pio_sm_config c = spi_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, pin_base, 4);
+    sm_config_set_sideset_pins(&c, pin_sck);
+    sm_config_set_out_shift(&c, false, true, bits);
+    sm_config_set_clkdiv(&c, clkdiv);
+
+    // setup directions
+    pio_sm_set_pins_with_mask(pio, sm, 0, (1u << pin_sck) | (0xfu << pin_base));
+    pio_sm_set_pindirs_with_mask(pio, sm, (1u << pin_sck) | (0xfu << pin_base),
+            (1u << pin_sck) | (0xfu << pin_base));
+    pio_gpio_init(pio, pin_sck);
+    for (uint i = 0; i < 4; i++) {
+        pio_gpio_init(pio, pin_base + i);
+    }
     
     // enable PIO block
     pio_sm_init(pio, sm, offset, &c);
