@@ -160,18 +160,18 @@ void ram_qspi_fast_read(uint32_t address, uint8_t* data, size_t length) {
     // read data
     for (uint i = 0; i < length; i++) {
         // upper nibble
+        asm volatile("nop\n");
         uint32_t a = (gpio_get_all() >> 8) & 0x0Fu;
         gpio_put(clk, true);
         gpio_put(clk, false);
 
         // lower nibble
+        asm volatile("nop\n");
         uint32_t b = (gpio_get_all() >> 8) & 0x0Fu;
         gpio_put(clk, true);
         gpio_put(clk, false);
 
         // store data
-        printf("[read debug] %08x\n", a);
-        printf("[read debug] %08x\n", b);
         *(data++) = (a << 4) | b;
     }
     gpio_set_dir_masked(0xF00, 0xF00);
@@ -234,18 +234,18 @@ int main() {
     ram_qspi_fast_write(0, data + 32, 32);
     gpio_put(ce[1], true);
 
+    gpio_put(ce[0], false);
+    ram_qspi_fast_read(0, data_in, 32);
+    gpio_put(ce[0], true);
+
+    gpio_put(ce[1], false);
+    ram_qspi_fast_read(0, data_in + 32, 32);
+    gpio_put(ce[1], true);
+
     // exit qspi mode
     gpio_clr_mask(0x3u << ce[0]);
     ram_qspi_disable();
     gpio_set_mask(0x3u << ce[0]);
-
-    gpio_put(ce[0], false);
-    ram_spi_fast_read(0, data_in, 32);
-    gpio_put(ce[0], true);
-
-    gpio_put(ce[1], false);
-    ram_spi_fast_read(0, data_in + 32, 32);
-    gpio_put(ce[1], true);
 
     // dump all data
     for (uint i = 0; i < 64; i++) {
@@ -253,7 +253,7 @@ int main() {
     }
 
     // TODO: something useful
-    while (true) {
-        sleep_ms(1000);
+    while (1) {
+        tight_loop_contents();
     }
 }

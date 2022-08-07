@@ -23,6 +23,7 @@
     "files.associations": {
         "bus.pio.h": "c",
         "pio_spi.h": "c",
-        "clocks.h": "c"
+        "clocks.h": "c",
+        "stdlib.h": "c"
     }
 }
